@@ -2307,7 +2307,7 @@ namespace xNet
 
         private void CloseConnectionIfNeeded()
         {
-            var hasConnection = (_connection != null);
+            var hasConnection = _connection != null && _connectionCommonStream != null;
 
             if (hasConnection && !_response.HasError &&
                 !_response.MessageBodyLoaded)
