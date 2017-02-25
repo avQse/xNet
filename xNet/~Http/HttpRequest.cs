@@ -8,6 +8,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security;
 using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 
@@ -2615,7 +2616,13 @@ namespace xNet
                         sslStream = new SslStream(_connectionNetworkStream, false, SslCertificateValidatorCallback);
                     }
 
-                    sslStream.AuthenticateAsClient(address.Host);
+                    var supportedProtocols = SslProtocols.Tls | SslProtocols.Ssl3;
+
+                    if (Enum.IsDefined(typeof(SecurityProtocolType), 768)) supportedProtocols |= (SslProtocols)768; //Tls 1.1 support
+                    if (Enum.IsDefined(typeof(SecurityProtocolType), 3072)) supportedProtocols |= (SslProtocols)3072; //Tls 1.2 support
+
+                    sslStream.AuthenticateAsClient(address.Host, new X509CertificateCollection(), supportedProtocols, false);
+
                     _connectionCommonStream = sslStream;
                 }
                 catch (Exception ex)
