@@ -641,7 +641,7 @@ namespace xNet
         /// </summary>
         /// <value>Значение по умолчанию — <see langword="null"/>.</value>
         /// <remarks>Куки могут изменяться ответом от HTTP-сервера. Чтобы не допустить этого, нужно установить свойство <see cref="xNet.Net.CookieDictionary.IsLocked"/> равным <see langword="true"/>.</remarks>
-        public CookieDictionary Cookies { get; set; }
+        public CookieCollection Cookies { get; set; }
 
         #endregion
 
@@ -2068,7 +2068,7 @@ namespace xNet
             if (Cookies == null)
                 return false;
 
-            return Cookies.ContainsKey(name);
+            return Cookies.Contains(name);
         }
 
         #region Работа с заголовками
@@ -2696,7 +2696,59 @@ namespace xNet
                 MergeHeaders(headers, _temporaryHeaders);
 
             if (Cookies != null && Cookies.Count != 0 && !headers.ContainsKey("Cookie"))
-                headers["Cookie"] = Cookies.ToString();
+            {
+                var cookies = new List<Cookie>();
+                foreach (var cookie in Cookies)
+                {
+                    bool addThisCookie = false;
+
+                    if (cookie.Domain == "/" && Address.AbsolutePath.StartsWith(cookie.Path))
+                    {
+                        addThisCookie = true;
+                    }
+                    else if (cookie.Domain.StartsWith("."))
+                    {
+                        var host = cookie.Domain.TrimStart('.');
+                        if (Address.Host.EndsWith(host) && Address.AbsolutePath.StartsWith(cookie.Path))
+                        {
+                            addThisCookie = true;
+                        }
+                    }
+                    else
+                    {
+                        if (string.Equals(cookie.Domain, Address.Host) && Address.AbsolutePath.StartsWith(cookie.Path))
+                        {
+                            addThisCookie = true;
+                        }
+                    }
+
+                    if (addThisCookie)
+                    {
+                        var cookieWithSameName = cookies.FirstOrDefault(c => c.Name == cookie.Name);
+                        if (cookieWithSameName != null)
+                        {
+                            if (cookie.Domain.Length > cookieWithSameName.Domain.Length)
+                            {
+                                cookies.Remove(cookieWithSameName);
+                                cookies.Add(cookie);
+                            }
+                            else if (cookie.Path.Length > cookieWithSameName.Path.Length)
+                            {
+                                cookies.Remove(cookieWithSameName);
+                                cookies.Add(cookie);
+                            }
+                        }
+                        else cookies.Add(cookie);
+                    }
+                }
+
+                var cookieStr = new StringBuilder();
+                foreach (var cookie in cookies)
+                {
+                    cookieStr.AppendFormat("{0}={1}; ", cookie.Name, cookie.Value);
+                }
+                headers["Cookie"] = cookieStr.ToString();
+            }
 
             return ToHeadersString(headers);
         }

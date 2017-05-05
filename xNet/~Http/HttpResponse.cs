@@ -326,7 +326,7 @@ namespace xNet
         private readonly Dictionary<string, string> _headers =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly CookieDictionary _rawCookies = new CookieDictionary();
+        private readonly Dictionary<string, string> _rawCookies = new Dictionary<string, string>();
 
         #endregion
 
@@ -453,7 +453,7 @@ namespace xNet
         /// Возвращает куки, образовавшиеся в результате запроса, или установленные в <see cref="xNet.Net.HttpRequest"/>.
         /// </summary>
         /// <remarks>Если куки были установлены в <see cref="xNet.Net.HttpRequest"/> и значение свойства <see cref="xNet.Net.CookieDictionary.IsLocked"/> равно <see langword="true"/>, то будут созданы новые куки.</remarks>
-        public CookieDictionary Cookies { get; private set; }
+        public CookieCollection Cookies { get; private set; }
 
         /// <summary>
         /// Возвращает время простаивания постоянного соединения в миллисекундах.
@@ -865,7 +865,7 @@ namespace xNet
                 return false;
             }
 
-            return Cookies.ContainsKey(name);
+            return Cookies.Contains(name);
         }
 
         /// <summary>
@@ -975,10 +975,8 @@ namespace xNet
             _headers.Clear();
             _rawCookies.Clear();
 
-            if (_request.Cookies != null && !_request.Cookies.IsLocked)
-                Cookies = _request.Cookies;
-            else
-                Cookies = new CookieDictionary();
+            if (_request.Cookies != null && !_request.Cookies.IsLocked) Cookies = _request.Cookies;
+            else Cookies = new CookieCollection();
 
             if (_receiverHelper == null)
             {
@@ -1106,63 +1104,61 @@ namespace xNet
                 throw NewHttpException(message);
             }
 
-            string cookieValue;
-            string cookieName = value.Substring(0, separatorPos);
+            var cookie = new Cookie
+            {
+                Name = value.Substring(0, separatorPos),
+                Domain = Address.Host,
+                Path = "/"
+            };
 
             if (endCookiePos == -1)
             {
-                cookieValue = value.Substring(separatorPos + 1);
+                cookie.Value = value.Substring(separatorPos + 1);
             }
             else
             {
-                cookieValue = value.Substring(separatorPos + 1,
+                cookie.Value = value.Substring(separatorPos + 1,
                     (endCookiePos - separatorPos) - 1);
 
-                #region Получаем время, которое куки будет действителен
-
-                int expiresPos = value.IndexOf("expires=");
-
-                if (expiresPos != -1)
+                int pathPos = value.IndexOf("path=", StringComparison.OrdinalIgnoreCase);
+                if (pathPos != -1)
                 {
-                    string expiresStr;
-                    int endExpiresPos = value.IndexOf(';', expiresPos);
+                    int endPathPos = value.IndexOf(';', pathPos);
 
-                    expiresPos += 8;
+                    pathPos += 5; //path= length
 
-                    if (endExpiresPos == -1)
-                    {
-                        expiresStr = value.Substring(expiresPos);
-                    }
-                    else
-                    {
-                        expiresStr = value.Substring(expiresPos, endExpiresPos - expiresPos);
-                    }
-
-                    DateTime expires;
-
-                    // Если время куки вышло, то удаляем её.
-                    if (DateTime.TryParse(expiresStr, out expires) &&
-                        expires < DateTime.Now)
-                    {
-                        Cookies.Remove(cookieName);
-                    }
+                    var pathStr = endPathPos == -1 ? value.Substring(pathPos) : value.Substring(pathPos, endPathPos - pathPos);
+                    cookie.Path = pathStr;
                 }
 
-                #endregion
+                int domainPos = value.IndexOf("domain=", StringComparison.OrdinalIgnoreCase);
+
+                if (domainPos != -1)
+                {
+                    int endDomainPos = value.IndexOf(';', domainPos);
+
+                    domainPos += 7; //domain= lenght
+
+                    var domainStr = endDomainPos == -1
+                        ? value.Substring(domainPos)
+                        : value.Substring(domainPos, endDomainPos - domainPos);
+                    cookie.Domain = domainStr;
+                }
             }
 
             // Если куки нужно удалить.
-            if (cookieValue.Length == 0 ||
-                cookieValue.Equals("deleted", StringComparison.OrdinalIgnoreCase))
+            if (cookie.Value.Length == 0 ||
+                cookie.Value.Equals("deleted", StringComparison.OrdinalIgnoreCase))
             {
-                Cookies.Remove(cookieName);
+                Cookies.Remove(cookie.Name, cookie.Domain, cookie.Path);
             }
             else
             {
-                Cookies[cookieName] = cookieValue;
+                Cookies.Remove(cookie.Name, cookie.Domain, cookie.Path);
+                Cookies.Add(cookie);
             }
 
-            _rawCookies[cookieName] = value;
+            _rawCookies[cookie.Name] = value;
         }
 
         private void ReceiveHeaders()
@@ -1687,7 +1683,7 @@ namespace xNet
                 int endTypePos = contentType.IndexOf(';');
                 if (endTypePos != -1)
                     contentType = contentType.Substring(0, endTypePos);
-  
+
                 return contentType;
             }
 
