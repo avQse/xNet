@@ -2742,12 +2742,15 @@ namespace xNet
                     }
                 }
 
-                var cookieStr = new StringBuilder();
-                foreach (var cookie in cookies)
+                if (cookies.Count > 0)
                 {
-                    cookieStr.AppendFormat("{0}={1}; ", cookie.Name, cookie.Value);
+                    var cookieStr = new StringBuilder();
+                    foreach (var cookie in cookies)
+                    {
+                        cookieStr.AppendFormat("{0}={1}; ", cookie.Name, cookie.Value);
+                    }
+                    headers["Cookie"] = cookieStr.ToString();
                 }
-                headers["Cookie"] = cookieStr.ToString();
             }
 
             return ToHeadersString(headers);
@@ -2810,7 +2813,7 @@ namespace xNet
             #region Content
 
             if (EnableEncodingContent)
-                headers["Accept-Encoding"] = "gzip,deflate";
+                headers["Accept-Encoding"] = "gzip, deflate";
 
             if (Culture != null)
                 headers["Accept-Language"] = GetLanguageHeader();
