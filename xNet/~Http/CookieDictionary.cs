@@ -32,7 +32,10 @@ namespace xNet
 
         public bool Expired
         {
-            get => Expires != DateTime.MinValue && Expires.ToLocalTime() <= DateTime.Now;
+            get
+            {
+                return Expires != DateTime.MinValue && Expires.ToLocalTime() <= DateTime.Now;
+            }
             set
             {
                 if (value) Expires = DateTime.Now;
@@ -89,12 +92,16 @@ namespace xNet
         {
             return new CookieCollectionEnumerator(this);
         }
+
         public void CopyTo(Array array, int index)
         {
             throw new NotImplementedException();
         }
+
         public int Count => _cookies.Count;
+
         public object SyncRoot => this;
+
         public bool IsSynchronized => false;
 
         public void Add(string name, string value, string domain)
@@ -219,7 +226,6 @@ namespace xNet
             var cookies = new List<Cookie>();
 
             var domainAttributeMatchAnyCookieVariant = new List<string>();
-            var domainAttributeMatchOnlyCookieVariantPlain = new List<string>();
 
             var fqdnRemote = uri.Host;
 
@@ -230,7 +236,6 @@ namespace xNet
             if (dot != -1) domainAttributeMatchAnyCookieVariant.Add(fqdnRemote.Substring(dot));
 
             BuildCookieCollectionFromDomainMatches(uri, cookies, domainAttributeMatchAnyCookieVariant);
-            BuildCookieCollectionFromDomainMatches(uri, cookies, domainAttributeMatchOnlyCookieVariantPlain);
 
             return cookies;
         }
