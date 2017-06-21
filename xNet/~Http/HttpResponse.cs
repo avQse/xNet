@@ -975,7 +975,7 @@ namespace xNet
             _headers.Clear();
             _rawCookies.Clear();
 
-            if (_request.Cookies != null && !_request.Cookies.IsLocked) Cookies = _request.Cookies;
+            if (_request.Cookies != null) Cookies = _request.Cookies;
             else Cookies = new CookieCollection();
 
             if (_receiverHelper == null)
@@ -1107,8 +1107,7 @@ namespace xNet
             var cookie = new Cookie
             {
                 Name = value.Substring(0, separatorPos),
-                Domain = Address.Host,
-                Path = "/"
+                Domain = Address.Host
             };
 
             if (endCookiePos == -1)
@@ -1143,6 +1142,28 @@ namespace xNet
                         ? value.Substring(domainPos)
                         : value.Substring(domainPos, endDomainPos - domainPos);
                     cookie.Domain = domainStr;
+                }
+
+                int expiresPos = value.IndexOf("expires=", StringComparison.OrdinalIgnoreCase);
+
+                if (expiresPos != -1)
+                {
+                    string expiresStr;
+                    int endExpiresPos = value.IndexOf(';', expiresPos);
+
+                    expiresPos += 8;
+
+                    if (endExpiresPos == -1)
+                    {
+                        expiresStr = value.Substring(expiresPos);
+                    }
+                    else
+                    {
+                        expiresStr = value.Substring(expiresPos, endExpiresPos - expiresPos);
+                    }
+
+                    if (DateTime.TryParse(expiresStr, out DateTime expires))
+                        cookie.Expires = expires;
                 }
             }
 

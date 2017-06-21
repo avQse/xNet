@@ -2697,50 +2697,7 @@ namespace xNet
 
             if (Cookies != null && Cookies.Count != 0 && !headers.ContainsKey("Cookie"))
             {
-                var cookies = new List<Cookie>();
-                foreach (var cookie in Cookies)
-                {
-                    bool addThisCookie = false;
-
-                    if (cookie.Domain == "/" && Address.AbsolutePath.StartsWith(cookie.Path))
-                    {
-                        addThisCookie = true;
-                    }
-                    else if (cookie.Domain.StartsWith("."))
-                    {
-                        var host = cookie.Domain.TrimStart('.');
-                        if (Address.Host.EndsWith(host) && Address.AbsolutePath.StartsWith(cookie.Path))
-                        {
-                            addThisCookie = true;
-                        }
-                    }
-                    else
-                    {
-                        if (string.Equals(cookie.Domain, Address.Host) && Address.AbsolutePath.StartsWith(cookie.Path))
-                        {
-                            addThisCookie = true;
-                        }
-                    }
-
-                    if (addThisCookie)
-                    {
-                        var cookieWithSameName = cookies.FirstOrDefault(c => c.Name == cookie.Name);
-                        if (cookieWithSameName != null)
-                        {
-                            if (cookie.Domain.Length > cookieWithSameName.Domain.Length)
-                            {
-                                cookies.Remove(cookieWithSameName);
-                                cookies.Add(cookie);
-                            }
-                            else if (cookie.Path.Length > cookieWithSameName.Path.Length)
-                            {
-                                cookies.Remove(cookieWithSameName);
-                                cookies.Add(cookie);
-                            }
-                        }
-                        else cookies.Add(cookie);
-                    }
-                }
+                var cookies = Cookies.Get(Address);
 
                 if (cookies.Count > 0)
                 {
